@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        overflow: hidden;
+      }
+
+      #canvas {
+        display: block;
+        left: 0;
+        position: absolute;
+        top: 0;
+        background-color: transparent;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      #runway_canvas {
+        display: block;
+        left: 0;
+        position: absolute;
+        top: 0;
+        background-color: black;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+
+      #flight {
+        display: block;
+        left: 0;
+        position: absolute;
+        top: 0;
+        background-color: rgba(255, 0, 0, 0);
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body style="height:100vh;">
+    <canvas id="canvas"></canvas>
+    <canvas id="runway_canvas"></canvas>
+    <canvas id="flight"></canvas>
+  </body>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+  <script>
+    //Emergency Plane - Red
+    //Paths - White
+    //BG - Black Green Radar
+    //Take Off Plane -
+    //Landing Plane -
+
+    var canvasLoader = function() {
+      var self = this;
+      window.requestAnimFrame = (function() {
+        return (
+          window.requestAnimationFrame ||
+          window.webkitRequestAnimationFrame ||
+          window.mozRequestAnimationFrame ||
+          window.oRequestAnimationFrame ||
+          window.msRequestAnimationFrame ||
+          function(a) {
+            window.setTimeout(a, 1e3 / 60);
+          }
+        );
+      })();
+
+      self.init = function() {
+        self.canvas = document.getElementById("canvas");
+        self.canvas.width = document.body.clientWidth;
+        self.canvas.height = document.body.clientHeight;
+        self.ctx = self.canvas.getContext("2d");
+
+        //radar
+        self.ctx.lineWidth = 0.3;
+        self.ctx.strokeStyle = "rgba(0,128,0,.95)";
+        self.count = 300;
+        self.rotation = 270 * (Math.PI / 180);
+        self.speed = 6;
+        self.canvasLoop();
+      };
+
+      self.updateLoader = function() {
+        self.rotation += self.speed / 100;
+      };
+
+      self.renderLoader = function() {
+        self.ctx.save();
+        self.ctx.globalCompositeOperation = "source-over";
+        self.ctx.translate(self.canvas.width / 2, self.canvas.height / 2);
+        self.ctx.rotate(self.rotation);
+        var i = self.count;
+        while (i--) {
+          self.ctx.beginPath();
+          self.ctx.arc(
+            0,
+            0,
+            i + Math.random() * 300, //radius of circle
+            Math.random(),
+            Math.PI / 3 + Math.random() / 12,
+            false
+          );
+          self.ctx.stroke();
+        }
+        self.ctx.restore();
+      };
+
+      self.canvasLoop = function() {
+        requestAnimFrame(self.canvasLoop, self.canvas);
+        self.ctx.globalCompositeOperation = "destination-out";
+        self.ctx.fillStyle = "rgba(0,0,0,.03)";
+        self.ctx.fillRect(0, 0, self.canvas.width, self.canvas.height);
+        self.updateLoader();
+        self.renderLoader();
+      };
+    };
+
+    //runway function
+    var runways = 3;
+    var angle = 360 / runways;
+    var sum = 0;
+    var arr = [];
+
+    var length = 500; //length of line
+
+    var canvas_run = document.getElementById("runway_canvas");
+    canvas_run.width = document.body.clientWidth;
+    canvas_run.height = document.body.clientHeight;
+    var ctx = canvas_run.getContext("2d");
+
+    var centre_x_run = canvas_run.width / 2;
+    var centre_y_run = canvas_run.height / 2;
+
+    var decide_angle = function() {
+      for (var i = 0; i < runways; i++) {
+        arr[i] = sum;
+        sum = sum + angle;
+      }
+    };
+
+    var draw_runway = function(angle, text) {
+      var x2 = centre_x_run + Math.cos((Math.PI * angle) / 180) * length;
+      var y2 = centre_y_run + Math.sin((Math.PI * angle) / 180) * length;
+
+      ctx.beginPath();
+      ctx.lineWidth = 5;
+      ctx.moveTo(centre_x_run, centre_y_run);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = "white";
+      ctx.stroke();
+
+      ctx.lineWidth = 2;
+      //text
+      ctx.font = "30px Arial";
+      ctx.fillStyle = "white";
+      ctx.fillText("Runway " + text, x2 + 10, y2 + 10);
+    };
+
+    //dots
+    var init = document.getElementById("flight");
+    var ctxx = init.getContext("2d");
+    ctxx.beginPath();
+    ctxx.fillStyle = "red";
+    ctxx.arc(centre_x_run, centre_y_run, 100, 0, Math.PI * 2);
+    ctxx.fill();
+    ctxx.closePath();
+
+    class drawdot {
+      constructor(runway, color, action, id) {
+        this.angle = runway;
+        this.id = id;
+        this.color = color;
+        this.speed = 100;
+        this.action = action;
+
+        this.startX = centre_x_run;
+        this.startY = centre_y_run;
+
+        this.x = this.startX;
+        this.y = this.startY;
+      } //constructor end
+
+      //draw method
+      draw() {
+        if (
+          this.x <= document.body.clientWidth + this.speed &&
+          this.y <= document.body.clientHeight + this.speed &&
+          (this.x >= -this.speed && this.y >= -this.speed)
+        ) {
+          ctx.fillStyle = this.color;
+          ctx.strokeStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          /*
+          ctx.font = "30px Arial";
+      ctx.fillStyle = this.color;
+      ctx.fillText(id, this.x + 10, this.y + 10);*/
+          ctx.moveTo(this.startX, this.startY);
+          ctx.lineTo(this.x, this.y);
+          ctx.stroke();
+          this.x += this.speed * Math.cos((this.angle * 3.14) / 180);
+          this.y += this.speed * Math.sin((this.angle * 3.14) / 180);
+          
+        }
+      }
+    }
+
+    class drawdotlanding {
+      constructor(runway, color, action, id) {
+        this.angle = runway;
+        this.id = id;
+        this.color = color;
+        this.speed = 100;
+        this.action = action;
+
+        this.startX = centre_x_run;
+        this.startY = centre_y_run;
+
+        this.x = centre_x_run +  length * Math.cos((this.angle * 3.14) / 180);
+        this.y = centre_y_run +  length * Math.sin((this.angle * 3.14) / 180);
+      } //constructor end
+
+      //draw method
+      draw() {
+        if (this.x!=this.startX && this.y!=this.startY) {
+          ctx.fillStyle = this.color;
+          ctx.strokeStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          /*
+          ctx.font = "30px Arial";
+      ctx.fillStyle = this.color;
+      ctx.fillText(id, this.x + 10, this.y + 10);*/
+          ctx.moveTo(centre_x_run +  length * Math.cos((this.angle * 3.14) / 180), centre_y_run +  length * Math.sin((this.angle * 3.14) / 180));
+          ctx.lineTo(this.x, this.y);
+          ctx.stroke();
+          this.x -= this.speed * Math.cos((this.angle * 3.14) / 180);
+          this.y -= this.speed * Math.sin((this.angle * 3.14) / 180);
+          
+        }
+      }
+    }
+
+    decide_angle();
+
+    for (var i = 0; i < runways; i++) {
+      draw_runway(arr[i], i + 1);
+    }
+
+    let r = [];
+    /*for (let i = 0; i < 5; i++) {
+      r.push(new drawdot(arr[i], "red"));
+    }
+    for (let i = 0; i < r.length; i++) {
+      r[i].draw();
+    }*/
+
+    //calling radar
+    var loader = new canvasLoader();
+    loader.init();
+
+    //decide color
+    var action_col = function(action) {
+      if (action == "Take Off") {
+        return "blue";
+      } else if (action == "Normal Land") {
+        return "yellow";
+      } else {
+        return "red";
+      }
+    };
+
+    //set interval
+    setInterval(function() {
+      ctx.clearRect(0, 0, canvas_run.width, canvas_run.height);
+      for (var i = 0; i < runways; i++) {
+        draw_runway(arr[i], i + 1);
+      }
+      for (let i = 0; i < r.length; i++) {
+        r[i].draw();
+      }
+    }, 1000);
+
+    //socket config
+    var socket = io.connect("http://" + document.domain + ":" + location.port);
+    socket.on("connect", function() {});
+
+    socket.on("my response", function(msg) {
+      jsData = JSON.parse(msg);
+      console.log(jsData);
+      if(jsData["action"] == "Take Off"){
+        r.push(
+          new drawdot(
+            arr[jsData["strip"] - 1],
+            action_col(jsData["action"]),
+            jsData["action"],
+            jsData["plane"]
+          )
+        );
+      }
+      else{
+        r.push(
+          new drawdotlanding(
+            arr[jsData["strip"] - 1],
+            action_col(jsData["action"]),
+            jsData["action"],
+            jsData["plane"]
+          )
+        );
+      }
+    });
+  </script>
+</html>

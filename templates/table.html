@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<HTML>
+  <HEAD>
+    <TITLE> Add/Remove dynamic rows in HTML table </TITLE>
+    <style>
+      h1 {
+        text-align: center;
+        font-size: 40px;
+      }
+
+      table {
+        text-align: left;
+        align-self: center;
+      }
+
+      thead {
+        font-size: 30px;
+      }
+      td {
+        width: 90%;
+      }
+
+      #dataTable {
+        margin-left: 555px;
+      }
+    </style>
+  </HEAD>
+  <BODY>
+    <!-- <INPUT type="button" value="Add Row" onclick="addRow('dataTable')" />-->
+    <h1>ATC 1</h1>
+    <TABLE id="dataTable" width="750px" border="1">
+      <thead>
+        <tr>
+          <th>Plane</th>
+          <th>Action</th>
+          <th>Start time</th>
+          <th>End time</th>
+          <th>Runway</th>
+        </tr>
+      </thead>
+      <TR> </TR>
+    </TABLE>
+  </BODY>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+  <script>
+    var jsData;
+    var socket = io.connect("http://" + document.domain + ":" + location.port);
+
+    socket.on("connect", function() {
+      socket.emit("callATC");
+    });
+
+    socket.on("my response", function(msg) {
+      //msg = {"plane": "a1", "action": "Take Off", "action_start_time": 36, "action_complete_time": 42, "strip": 2}
+      jsData = JSON.parse(msg);
+      addRow("dataTable", jsData);
+    });
+
+    //console.
+    console.log(jsData);
+
+    var addRow = function(tableID, jsData) {
+      var table = document.getElementById(tableID);
+      var rowCount = table.rows.length;
+      var row = table.insertRow(rowCount);
+
+      var cell1 = row.insertCell(0);
+      var element1 = document.createElement("div");
+      var textNode = document.createTextNode(jsData["plane"]);
+      element1.appendChild(textNode);
+      cell1.appendChild(element1);
+
+      var cell2 = row.insertCell(1);
+      var element2 = document.createElement("div");
+      var textNode2 = document.createTextNode(jsData["action"]);
+      element2.appendChild(textNode2);
+      cell2.appendChild(element2);
+
+      var cell3 = row.insertCell(2);
+      var element3 = document.createElement("div");
+      var textNode3 = document.createTextNode(jsData["action_start_time"]);
+      element3.appendChild(textNode3);
+      cell3.appendChild(element3);
+
+      var cell4 = row.insertCell(3);
+      var element4 = document.createElement("div");
+      var textNode4 = document.createTextNode(jsData["action_complete_time"]);
+      element4.appendChild(textNode4);
+      cell4.appendChild(element4);
+
+      var cell5 = row.insertCell(4);
+      var element5 = document.createElement("div");
+      var textNode5 = document.createTextNode(jsData["strip"]);
+      element5.appendChild(textNode5);
+      cell5.appendChild(element5);
+    };
+  </script>
+</HTML>

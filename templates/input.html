@@ -1,0 +1,41 @@
+
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <title>Flask_Chat_App</title>
+  </head>
+  <body>
+
+    <form action="" method="POST">
+      <input type="text" class="airplane" placeholder="AIRPLANE"/>
+      <input type="text" class="process" placeholder="PROCESS"/>
+      <input type="text" class="fuel"/>
+      <input type="submit"/>
+    </form>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+    <script type="text/javascript">
+      var socket = io.connect('http://' + document.domain + ':' + location.port);
+      socket.on( 'connect', function() {
+        socket.emit( 'my event', {
+          data: 'User Connected'
+        } )
+        var form = $( 'form' ).on( 'submit', function( e ) {
+          e.preventDefault()
+          let airplane = $( 'input.airplane' ).val()
+          let process = $( 'input.process' ).val()
+          let air_fuel = $( 'input.fuel' ).val()
+          socket.emit( 'get inputPlane', {
+            airplane : airplane,
+            process : process,
+            fuel : air_fuel
+          } )
+          $( 'input.airplane' ).val( '' ).focus()
+        } )
+      } )
+    </script>
+
+  </body>
+  </html>
